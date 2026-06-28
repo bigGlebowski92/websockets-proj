@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-const isoDateString = z.string().refine(
-  (value) => !Number.isNaN(Date.parse(value)),
-  { message: 'Must be a valid ISO date string' },
-);
+const isoDateString = z.iso.datetime();
 
 export const listMatchesQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).optional(),

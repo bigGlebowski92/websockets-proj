@@ -1,8 +1,13 @@
 import express from 'express';
+import http from 'http';
 import matchesRouter from './routes/matches.js';
+import { attachWebSocketServer } from './ws/server.js';
+
+const PORT = process.env.PORT || 8000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const app = express();
-const PORT = 8000;
+const server = http.createServer(app);
 
 app.use(express.json());
 
@@ -12,15 +17,12 @@ app.get('/', (req, res) => {
 
 app.use('/matches', matchesRouter);
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+const { broadcastMatchCreated } = attachWebSocketServer(server);
+app.locals.broadcastMatchCreated = broadcastMatchCreated;
 
-server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Stop the other process and restart.`);
-  } else {
-    console.error('Server failed to start:', error);
-  }
-  process.exit(1);
+server.listen(PORT, HOST, () => {
+  const baseUrl =
+    HOST === '0.0.0.0' ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`;
+  console.log(`Server running at ${baseUrl}`);
+  console.log(`WebSocket server running at ${baseUrl}/ws`);
 });

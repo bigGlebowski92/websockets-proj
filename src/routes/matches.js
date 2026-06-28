@@ -1,14 +1,38 @@
 import express from 'express';
 import { db } from '../db/db.js';
 import { matches } from '../db/schema.js';
-import { createMatchSchema } from '../validation/matches.js';
+import {
+  createMatchSchema,
+  listMatchesQuerySchema,
+} from '../validation/matches.js';
 import { getMatchStatus } from '../utils/match-status.js';
 import { formatValidationError } from '../utils/validation-error.js';
+import { desc } from 'drizzle-orm';
 
 export const matchesRouter = express.Router();
 
-matchesRouter.get('/', (req, res) => {
-  res.json({ message: 'Hello from Matches!' });
+const MAX_LIMIT = 100;
+
+matchesRouter.get('/', async (req, res) => {
+  const parsed = listMatchesQuerySchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json(formatValidationError(parsed.error));
+  }
+
+  const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT);
+
+  try {
+    const data = await db
+      .select()
+      .from(matches)
+      .orderBy(desc(matches.createdAt))
+      .limit(limit);
+    res.status(200).json({ data });
+  } catch (error) {
+    console.error({ error });
+    return res.status(500).json({ error: 'Failed to list matches' });
+  }
 });
 
 matchesRouter.post('/', async (req, res) => {
@@ -32,6 +56,10 @@ matchesRouter.post('/', async (req, res) => {
         status: getMatchStatus(startTime, endTime),
       })
       .returning();
+
+    if (res.app.locals.broadcastMatchCreated) {
+      res.app.locals.broadcastMatchCreated(event);
+    }
 
     res.status(201).json({ data: event });
   } catch (error) {
