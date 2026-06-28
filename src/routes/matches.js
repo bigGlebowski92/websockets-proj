@@ -14,7 +14,7 @@ export const matchesRouter = express.Router();
 const MAX_LIMIT = 100;
 
 matchesRouter.get('/', async (req, res) => {
-  const parsed = listMatchesQuerySchema.safeParse(req.body);
+  const parsed = listMatchesQuerySchema.safeParse(req.query);
 
   if (!parsed.success) {
     return res.status(400).json(formatValidationError(parsed.error));
